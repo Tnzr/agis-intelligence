@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { onLand } from './land.ts'
+import { nearestSite, readLocations, saveLocations } from './locations.ts'
 import { coverage, demand, parseFrame, pumpMinutes, sampleWeather, simulateFrame, sites } from './model.ts'
 
 test('fallback provides thirty historical days and seven forecast days', () => {
@@ -42,4 +45,30 @@ test('telemetry maps PR #2 sensor and PWM fields without accepting malformed fra
   assert.equal(reading?.pump, frame.Actuators.pump_pwm)
   assert.equal(parseFrame('{}'), null)
   assert.equal(parseFrame(JSON.stringify({ ...frame, Actuators: { pump_pwm: 256, fan_pwm: 10 } })), null)
+})
+
+test('location lookup reuses nearby built-in sites, not distant points', () => {
+  const nairobi = { id: 'geo-nairobi', name: 'Nairobi', region: 'Kenya', lat: -1.286, lon: 36.81 }
+  assert.equal(nearestSite(nairobi, sites)?.id, 'nairobi')
+  assert.equal(nearestSite({ ...nairobi, lat: -1.4 }, sites), undefined)
+})
+
+test('saved locations restore both the custom site and the current selection', () => {
+  const storage = new Map()
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true, value: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) },
+  })
+  try {
+    const custom = [{ id: 'oslo', name: 'Oslo', region: 'Norway', lat: 59.91, lon: 10.75 }]
+    saveLocations({ custom, selectedId: 'oslo' })
+    assert.deepEqual(readLocations(), { custom, selectedId: 'oslo' })
+  } finally {
+    delete globalThis.localStorage
+  }
+})
+
+test('bundled land polygons distinguish a city from an open-ocean pin', () => {
+  const land = JSON.parse(readFileSync(new URL('../public/world-land.json', import.meta.url), 'utf8'))
+  assert.equal(onLand(6.25, -75.56, land), true)
+  assert.equal(onLand(-0.25, 90.71, land), false)
 })

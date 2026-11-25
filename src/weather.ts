@@ -9,7 +9,7 @@ export async function getWeather(site: Site, signal: AbortSignal): Promise<Weath
     const raw = localStorage.getItem(key)
     if (raw) cached = JSON.parse(raw)
     if (cached?.days.length === 37 && Date.now() - cached.saved < 60 * 60 * 1000) {
-      return { source: 'cache', days: cached.days }
+      return { source: 'cache', days: cached.days, updatedAt: cached.saved }
     }
   } catch {
     cached = undefined
@@ -32,15 +32,16 @@ export async function getWeather(site: Site, signal: AbortSignal): Promise<Weath
     if (days.length !== 37 || !days.every(day => [day.et0, day.rain, day.high].every(Number.isFinite))) {
       throw new Error('Incomplete weather data')
     }
+    const updatedAt = Date.now()
     try {
-      localStorage.setItem(key, JSON.stringify({ saved: Date.now(), days }))
+      localStorage.setItem(key, JSON.stringify({ saved: updatedAt, days }))
     } catch {
       // Weather remains usable with storage disabled.
     }
-    return { source: 'live', days }
+    return { source: 'live', days, updatedAt }
   } catch {
     if (cached?.days.length === 37 && Date.now() - cached.saved < 24 * 60 * 60 * 1000) {
-      return { source: 'cache', days: cached.days }
+      return { source: 'cache', days: cached.days, updatedAt: cached.saved }
     }
     return sampleWeather(site)
   }

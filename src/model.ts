@@ -1,6 +1,8 @@
 export type Site = { id: string; name: string; region: string; lat: number; lon: number }
 export type Day = { date: string; et0: number; rain: number; high: number; forecast: boolean }
-export type Weather = { days: Day[]; source: 'live' | 'cache' | 'sample' }
+export type Weather = { days: Day[] } & (
+  { source: 'live' | 'cache'; updatedAt: number } | { source: 'sample' }
+)
 
 export const sites: Site[] = [
   { id: 'medellin', name: 'Medellín', region: 'Colombia', lat: 6.25, lon: -75.56 },

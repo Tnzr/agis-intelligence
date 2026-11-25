@@ -1,21 +1,35 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type ComponentProps, type FormEvent } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Activity, ArrowDown, ArrowUpRight, CircleHelp, Globe2, LayoutGrid, MapPin, Network, Plus, Search, Sprout } from 'lucide-react'
-import { CoverageStats, ImpactView, NetworkView, number } from './Impact.tsx'
-import { SiteMap } from './Map.tsx'
-import { NodeView } from './NodeView.tsx'
+import { Activity, ArrowDown, ArrowUpRight, BookOpen, CircleHelp, Globe2, LayoutGrid, Mail, MapPin, Network, Plus, Search, Sprout } from 'lucide-react'
+import { CoverageStats, number } from './CoverageStats.tsx'
+import { Pilot, contact } from './Pilot.tsx'
 import { WeatherPanel } from './WeatherPanel.tsx'
+import { nearestSite, readLocations, saveLocations } from './locations.ts'
 import { sites, type Site } from './model.ts'
 import { searchSites } from './weather.ts'
 import './styles.css'
 
+const SiteMap = lazy(() => import('./Map.tsx').then(module => ({ default: module.SiteMap })))
+const NodeView = lazy(() => import('./NodeView.tsx').then(module => ({ default: module.NodeView })))
+const ImpactView = lazy(() => import('./Impact.tsx').then(module => ({ default: module.ImpactView })))
+const NetworkView = lazy(() => import('./Impact.tsx').then(module => ({ default: module.NetworkView })))
+const LearnView = lazy(() => import('./Learn.tsx').then(module => ({ default: module.LearnView })))
+const firmware = 'https://github.com/Tnzr/AGIS'
+
 const tabs = [
   { id: 'overview', text: 'Overview', icon: LayoutGrid },
-  { id: 'nodes', text: 'Node telemetry', icon: Activity },
+  { id: 'telemetry', text: 'Telemetry', icon: Activity },
   { id: 'network', text: 'Network', icon: Network },
   { id: 'impact', text: 'Impact', icon: Sprout },
+  { id: 'learn', text: 'Learn', icon: BookOpen },
 ] as const
 type Tab = typeof tabs[number]['id']
+
+function tabFromUrl(): Tab {
+  const current = window.location.hash.slice(1)
+  if (current.startsWith('learn-') || (!current && /^\/learn\/?$/.test(window.location.pathname))) return 'learn'
+  return tabs.find(tab => tab.id === current)?.id ?? 'overview'
+}
 
 const scenarios = [
   { label: 'Early network', units: 50 },
@@ -23,13 +37,35 @@ const scenarios = [
   { label: 'Wide coverage', units: 5000 },
 ]
 
-function LocationPicker({ active, listedSites, select, add }: {
+function DeferredMap(props: ComponentProps<typeof SiteMap>) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    if (visible || !ref.current) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) setVisible(true)
+    }, { rootMargin: '160px' })
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [visible])
+  const placeholder = <div className="world-map map-placeholder">World map loads as you scroll</div>
+  return <div ref={ref}>{visible ? <Suspense fallback={<div className="world-map map-placeholder" role="status">Loading world map…</div>}><SiteMap {...props} /></Suspense> : placeholder}</div>
+}
+
+function LocationPicker({ active, listedSites, select, add, selectionVersion }: {
   active: Site; listedSites: Site[]; select: (site: Site) => void; add: (site: Site) => void
+  selectionVersion: number
 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Site[]>([])
   const [status, setStatus] = useState('')
   const controller = useRef<AbortController>(null)
+  useEffect(() => {
+    controller.current?.abort()
+    setStatus('')
+    setResults([])
+  }, [selectionVersion])
+  useEffect(() => () => controller.current?.abort(), [])
   function clearSearch() {
     controller.current?.abort()
     setStatus('')
@@ -64,15 +100,34 @@ function LocationPicker({ active, listedSites, select, add }: {
 }
 
 function App() {
-  const [tab, setTab] = useState<Tab>('overview')
+  const [tab, setTab] = useState(tabFromUrl)
   const [scenario, setScenario] = useState(scenarios[1])
-  const [listedSites, setListedSites] = useState(sites)
-  const [active, setActive] = useState(sites[0])
+  const [locations, setLocations] = useState(readLocations)
+  const [selectionVersion, setSelectionVersion] = useState(0)
+  const listedSites = [...sites, ...locations.custom]
+  const active = listedSites.find(site => site.id === locations.selectedId) ?? sites[0]
   const units = scenario.units
+  useEffect(() => saveLocations(locations), [locations])
+  useEffect(() => {
+    const sync = () => setTab(tabFromUrl())
+    window.addEventListener('hashchange', sync)
+    return () => window.removeEventListener('hashchange', sync)
+  }, [])
+  useEffect(() => {
+    if (tab !== 'overview') return
+    const anchor = window.location.hash
+    if (anchor === '#coverage' || anchor === '#pilot') document.getElementById(anchor.slice(1))?.scrollIntoView()
+  }, [tab])
+  function selectSite(site: Site) {
+    setLocations(previous => ({ ...previous, selectedId: site.id }))
+    setSelectionVersion(version => version + 1)
+  }
   function addSite(site: Site) {
-    const existing = listedSites.find(item => item.id === site.id)
-    if (!existing) setListedSites(previous => [...previous, site])
-    setActive(existing ?? site)
+    setLocations(previous => {
+      const existing = nearestSite(site, [...sites, ...previous.custom])
+      return { custom: existing ? previous.custom : [...previous.custom, site], selectedId: (existing ?? site).id }
+    })
+    setSelectionVersion(version => version + 1)
   }
   function addPin(latitude: number, longitude: number) {
     const lat = Number(latitude.toFixed(4))
@@ -82,6 +137,7 @@ function App() {
   }
   function showTab(next: Tab) {
     setTab(next)
+    window.location.hash = next
     window.scrollTo(0, 0)
   }
   return <>
@@ -89,12 +145,12 @@ function App() {
     <header className="header"><div className="shell nav-shell">
       <button className="brand" onClick={() => showTab('overview')} aria-label="AGIS overview"><img src="/agis.svg" alt="" width="36" height="36" /><span><strong>AGIS</strong><small>Agricultural intelligence</small></span></button>
       <nav aria-label="Dashboard views">{tabs.map(({ id, text, icon: Icon }) => <button key={id} aria-current={tab === id ? 'page' : undefined} onClick={() => showTab(id)}><Icon size={16} /><span>{text}</span></button>)}</nav>
-      <a className="source-link" href="https://github.com/Tnzr/AGIS" target="_blank" rel="noreferrer">Firmware <ArrowUpRight size={15} /></a>
+      <a className="source-link" href={firmware} target="_blank" rel="noopener noreferrer">Firmware <ArrowUpRight size={15} /></a>
     </div></header>
     <main className="shell main" id="main">
       {tab === 'overview' ? <>
         <section className="hero" aria-labelledby="hero-title">
-          <div className="hero-content"><div className="eyebrow"><span className="eyebrow-dot" /> Open-source concept demo</div><h1 id="hero-title">From greenhouse data<br className="desktop-break" /> to better forecasts</h1><p>Explore how local weather and a growing network of greenhouse sensors could inform irrigation and regional crop forecasts.</p><a href="#coverage" className="primary-button">Explore the scenarios <ArrowDown size={16} /></a></div>
+          <div className="hero-content"><div className="eyebrow"><span className="eyebrow-dot" /> Open-source concept demo</div><h1 id="hero-title">From greenhouse data<br className="desktop-break" /> to better forecasts</h1><p>The <a href={firmware} target="_blank" rel="noopener noreferrer">open-source ESP32 controller</a> reads DHT11 temperature and humidity and water flow, runs the pump and fan with local PID control, and streams readings over WebSocket.</p><div className="hero-actions"><a href="#coverage" className="primary-button">Explore the scenarios <ArrowDown size={16} /></a><a href="#pilot" className="quiet-button">Plan a pilot <ArrowDown size={16} /></a></div></div>
           <img className="hero-art" src="/greenhouse.svg" alt="" />
         </section>
         <section className="coverage" id="coverage" aria-labelledby="coverage-title">
@@ -104,17 +160,20 @@ function App() {
           <CoverageStats units={units} />
           <div className="explore-grid">
             <section className="card map-card" aria-labelledby="map-title"><div className="panel-heading"><div><div className="eyebrow"><MapPin size={16} /> World map</div><h3 id="map-title">Explore a location</h3><p>Example locations, not active deployments.</p></div></div>
-              <LocationPicker active={active} listedSites={listedSites} select={setActive} add={addSite} />
-              <SiteMap sites={listedSites} active={active} select={setActive} add={addPin} />
+              <LocationPicker active={active} listedSites={listedSites} select={selectSite} add={addSite} selectionVersion={selectionVersion} />
+              <DeferredMap sites={listedSites} active={active} select={selectSite} add={addPin} />
               <p className="fine map-note"><Plus size={14} /> Click the map or search to add a location.</p>
             </section>
-            <WeatherPanel key={active.id} site={active} />
+            <WeatherPanel site={active} />
           </div>
           <div className="under-grid"><span><CircleHelp size={15} /> Weather sites are independent of the hypothetical coverage scenarios.</span><button className="quiet-button" onClick={() => showTab('impact')}>View economics and assumptions <ArrowUpRight size={15} /></button></div>
         </section>
-      </> : tab === 'nodes' ? <NodeView /> : tab === 'network' ? <NetworkView /> : <ImpactView units={units} />}
+        <Pilot />
+      </> : <Suspense fallback={<p className="view-loading" role="status">Loading view…</p>}>
+        {tab === 'telemetry' ? <NodeView /> : tab === 'network' ? <NetworkView /> : tab === 'learn' ? <LearnView /> : <><ImpactView units={units} /><Pilot /></>}
+      </Suspense>}
     </main>
-    <footer><div className="shell footer-shell"><span>Open-source · <a href="https://github.com/Tnzr/AGIS" target="_blank" rel="noreferrer">github.com/Tnzr/AGIS</a></span><a href="https://github.com/Tnzr/AGIS/issues" target="_blank" rel="noreferrer">Request changes <ArrowUpRight size={14} /></a></div></footer>
+    <footer><div className="shell footer-shell"><span>Open-source · <a href={firmware} target="_blank" rel="noopener noreferrer">github.com/Tnzr/AGIS</a></span><div className="footer-links"><a href="https://pioneerinnovations.org" target="_blank" rel="noopener noreferrer">Pioneer Innovations Collective <ArrowUpRight size={14} /></a><a href={contact}>Contact us <Mail size={14} /></a></div></div></footer>
   </>
 }
 

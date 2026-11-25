@@ -12,7 +12,9 @@ Requires Node.js 22 or newer.
     npm run build
     PORT=4173 npm start
 
-Deploy the contents of `dist/` with any static web host. No backend, accounts, keys, or LLM calls are required. Open-Meteo supplies weather and geocoding. The world basemap bundles [Natural Earth 1:110m land](https://www.naturalearthdata.com/downloads/110m-physical-vectors/110m-land/), public-domain data rounded to three decimal places. If weather cannot load, the app labels and uses a bundled illustrative series. Geocoding requires connectivity; map-click coordinates are an alternative. Added locations last until the page is reloaded.
+Deploy the contents of `dist/` with any static web host. No backend, accounts, keys, or LLM calls are required. Open-Meteo supplies weather and geocoding. The world basemap bundles [Natural Earth 1:110m land](https://www.naturalearthdata.com/downloads/110m-physical-vectors/110m-land/), public-domain data rounded to three decimal places. If weather cannot load, the app labels and uses a bundled illustrative series. Geocoding requires connectivity; map-click coordinates are an alternative. Added locations and the selected location are saved in the current browser.
+
+The [Learn tutorial](https://agis.pioneerinnovations.org/#learn) walks through hardware, control, telemetry, weather and the scenario model. It is also available at `/#learn` locally; the included server supports direct navigation to `/learn`.
 
 ## Weather and irrigation
 
@@ -27,7 +29,8 @@ One participating node per modeled 100 m² greenhouse; adoption scenarios use 50
 - Baseline crop output: 20 kg/m²/year, within the 15–25 kg/m²/year range estimated for low-tech mixed-crop greenhouses in the demo’s agricultural-economist review. Assumed yield uplift: 6%. The illustrative crop split is 50% tomatoes, 30% peppers, and 20% leafy greens.
 - Avoided pumping energy: 0.15 kWh/m³ of water saved. Avoided emissions: 0.42 kg CO₂e/kWh. Water productivity uses projected yield divided by projected applied irrigation.
 - Gross annual benefit: US$1.20/kg incremental harvest at a blended farmgate price + US$0.40/m³ water saved. No post-harvest losses or quality rejections are deducted from projected supply or sales. This is not net income, and no pilot observations are implied.
+- Annual resource and gross benefits scale as per-unit impact × unit count; they assume no network effects or economies of scale. Hardware and installation have not been costed, and the demo estimates neither a pilot budget nor payback.
 
 ## Device and network
 
-Telemetry follows [firmware PR #2](https://github.com/Tnzr/AGIS/pull/2): `DHT_Sensor`, `Waterflow_Sensor`, and `Actuators`, with 8-bit PWM displayed as percent duty. The browser simulates readings or listens to an explicitly configured WebSocket. It does not write commands or implement PID control. The production HTTPS app requires `wss://`; to read a local unencrypted ESP32 `ws://<device-ip>/ws` stream, run the demo over HTTP on a reachable LAN. The network diagram is a concept for cooperative mesh relays, offline queuing, and gateway synchronization; no radios or shared ledger are deployed.
+Telemetry follows [firmware PR #2](https://github.com/Tnzr/AGIS/pull/2): `DHT_Sensor`, `Waterflow_Sensor`, and `Actuators`, with 8-bit PWM displayed as percent duty. The browser simulates readings or listens to an explicitly configured WebSocket. It does not write commands or implement PID control. The production HTTPS app requires `wss://`; to read a local unencrypted ESP32 `ws://<device-ip>:8080/ws` stream, run the demo over HTTP on a reachable LAN and use the configured port (8080 by default). The network diagram is a concept for cooperative mesh relays, offline queuing, and gateway synchronization; no radios or shared ledger are deployed.

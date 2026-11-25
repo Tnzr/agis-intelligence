@@ -40,7 +40,7 @@ export function NodeView() {
       address = new URL(url.trim())
       if (!['ws:', 'wss:'].includes(address.protocol) || address.username || address.password || address.hash) throw new Error()
     } catch {
-      setNotice('Enter a WebSocket URL, for example ws://192.168.1.50/ws.')
+      setNotice('Enter a WebSocket URL, for example ws://192.168.1.50:8080/ws.')
       return
     }
     if (location.protocol === 'https:' && address.protocol === 'ws:') {
@@ -102,9 +102,9 @@ export function NodeView() {
         <svg viewBox="0 0 140 40" role="img" aria-label={name + ' recent readings'}><path d="M0 36h140" /><polyline points={points} /></svg>
       </article>
     })}</div>
-    <p className="fine">{latest ? 'Flow setpoint: ' + latest.target.toFixed(2) + ' L/min. ' : ''}The simulation uses the firmware JSON shape and illustrative actuator responses. The ESP32 runs the real control loop locally; this viewer never sends commands.</p>
+    <p className="fine">{latest ? 'Flow setpoint: ' + latest.target.toFixed(2) + ' L/min. ' : ''}{mode === 'simulated' && 'The simulation uses the firmware JSON shape and illustrative actuator responses. '}The ESP32 runs the real control loop locally; this viewer never sends commands.</p>
     <form className="connect-form" onSubmit={connect}><label htmlFor="socket">Connect a real AGIS node</label><div className="input-row"><input id="socket" value={url} onChange={event => setUrl(event.target.value)} placeholder="wss://your-node/ws" required /><button className="primary-button" type="submit"><Activity size={16} /> Connect</button></div>
-      <p className="fine">Read-only WebSocket · Requires a device running <a href="https://github.com/Tnzr/AGIS/pull/2">AGIS PR #2-compatible firmware</a>.</p>
+      <p className="fine">Read-only WebSocket · Requires a device running <a href="https://github.com/Tnzr/AGIS/pull/2" target="_blank" rel="noopener noreferrer">AGIS PR #2-compatible firmware</a>.</p>
     </form>
     {mode !== 'simulated' && <button className="quiet-button" onClick={reset}>Return to simulation</button>}
     {notice && <p role="status" className="notice">{notice}</p>}
