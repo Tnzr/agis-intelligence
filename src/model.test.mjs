@@ -25,6 +25,16 @@ test('coverage projects improved forecasts and scales total production and savin
   assert.ok(late.yieldTonnes > early.yieldTonnes && late.value > early.value)
 })
 
+test('wide coverage projects annual drip irrigation, crop, and gross benefit totals', () => {
+  const result = coverage(5000)
+  assert.equal(result.water, 76500)
+  assert.equal(result.yieldTonnes, 10600)
+  assert.equal(result.energy, 11475)
+  assert.equal(result.co2, 4819.5)
+  assert.equal(result.value, 750600)
+  assert.equal(result.productivity.toFixed(1), '30.4')
+})
+
 test('telemetry maps PR #2 sensor and PWM fields without accepting malformed frames', () => {
   const frame = simulateFrame(4)
   const reading = parseFrame(JSON.stringify(frame))

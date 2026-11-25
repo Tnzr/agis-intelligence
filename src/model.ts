@@ -35,11 +35,14 @@ export function sampleWeather(site: Site, today = new Date()): Weather {
 
 export function coverage(units: number) {
   const error = Math.hypot(6, 24 / Math.sqrt(1 + units / 35))
-  const baselineWater = units * 100 * 550 / 1000
+  const greenhouseArea = units * 100
+  const growingDays = 340
+  const irrigationPerGrowingDay = 2.5
+  const baselineWater = greenhouseArea * growingDays * irrigationPerGrowingDay / 1000
   const water = baselineWater * 0.18
-  const baselineYield = units * 100 * 8 / 1000
+  const baselineYield = greenhouseArea * 20 / 1000
   const yieldTonnes = baselineYield * 1.06
-  const energy = water * 0.45
+  const energy = water * 0.15
   const value = (yieldTonnes - baselineYield) * 1000 * 1.2 + water * 0.4
   return { error, water, yieldTonnes, energy, co2: energy * 0.42, value, productivity: yieldTonnes * 1000 / (baselineWater - water) }
 }
