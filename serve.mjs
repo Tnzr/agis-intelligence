@@ -19,7 +19,8 @@ createServer(async (request, response) => {
     return
   }
   const { pathname } = new URL(request.url, 'http://localhost')
-  const path = pathname === '/' ? 'index.html' : pathname.slice(1)
+  const isPage = !pathname.startsWith('/assets/') && !extname(pathname)
+  const path = isPage ? 'index.html' : pathname.slice(1)
   if (!/^(?:assets\/)?[\w.-]+$/.test(path) || !Object.hasOwn(types, extname(path))) {
     response.writeHead(404).end()
     return

@@ -114,7 +114,7 @@ function App() {
         </section>
       </> : tab === 'nodes' ? <NodeView /> : tab === 'network' ? <NetworkView /> : <ImpactView units={units} />}
     </main>
-    <footer><div className="shell footer-shell"><span>Open-source · <a href="https://github.com/Tnzr/AGIS" target="_blank" rel="noreferrer">github.com/Tnzr/AGIS</a></span><a href="https://app.devin.ai/sessions/bb4c84562c184afdb4f81347b25a4796" target="_blank" rel="noreferrer">Request changes <ArrowUpRight size={14} /></a></div></footer>
+    <footer><div className="shell footer-shell"><span>Open-source · <a href="https://github.com/Tnzr/AGIS" target="_blank" rel="noreferrer">github.com/Tnzr/AGIS</a></span><a href="https://github.com/Tnzr/AGIS/issues" target="_blank" rel="noreferrer">Request changes <ArrowUpRight size={14} /></a></div></footer>
   </>
 }
 
