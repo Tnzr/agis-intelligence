@@ -6,6 +6,7 @@ import './learn.css'
 
 const repo = 'https://github.com/Tnzr/AGIS'
 const firmware = repo + '/blob/521f7de69036bde2093b05bf3afd4e12f38c132c/AGIS/'
+const webRepo = 'https://github.com/Tnzr/agis-intelligence'
 const chapters = [
   ['system', 'How AGIS works'],
   ['hardware', 'Hardware and wiring'],
@@ -39,6 +40,10 @@ function Code({ language, code }: { language: string; code: string }) {
 
 function Source({ file, lines }: { file: string; lines?: string }) {
   return <a href={firmware + file + (lines ? '#' + lines : '')} target="_blank" rel="noopener noreferrer">{file} <ArrowUpRight size={13} /></a>
+}
+
+function WebSource({ file }: { file: string }) {
+  return <a href={webRepo + '/blob/main/' + file} target="_blank" rel="noopener noreferrer"><code>{file}</code></a>
 }
 
 export function LearnView() {
@@ -114,24 +119,24 @@ ledcWrite(fanChannel, output.fanPwm);`} />
       <p>The firmware serializes a sample, prints the same JSON to serial at 115200 baud and broadcasts it on <code>/ws</code>. PWM ranges from 0 to 255; the web viewer turns that into percent duty. Here is a sample from the app’s simulator, shaped like a firmware frame.</p>
       <Code language="JSON · simulated sample" code={JSON.stringify(simulateFrame(0), null, 2)} />
       <p>Configure Wi-Fi in the device’s local SPIFFS config. On the same network, open the web app locally over HTTP, select <a href="#telemetry">Telemetry</a>, then use <strong>Connect a real AGIS node</strong> with <code>ws://&lt;device-ip&gt;:8080/ws</code> (8080 is the default; use your configured port). The public HTTPS site only accepts <code>wss://</code>. Do not expose an unencrypted node to the internet.</p>
-      <p className="tutorial-sources"><Source file="src/main.cpp" lines="L102-L113" /> · <Source file="lib/Config/config.h" /> · Web: <code>src/NodeView.tsx</code> and <code>src/model.ts</code></p>
+      <p className="tutorial-sources"><Source file="src/main.cpp" lines="L102-L113" /> · <Source file="lib/Config/config.h" /> · Web: <WebSource file="src/NodeView.tsx" /> and <WebSource file="src/model.ts" /></p>
     </section>
     <section className="card detail-card tutorial-chapter" id="learn-irrigation">
       <h2>6. Estimate irrigation from weather</h2>
-      <p><code>src/weather.ts</code> requests Open-Meteo’s FAO reference evapotranspiration (ET₀). The two functions below are from <code>src/model.ts</code>. One millimeter of water over one m² is one liter. The model adjusts for crop, cover and irrigation efficiency; outdoor rain is not deducted.</p>
+      <p><WebSource file="src/weather.ts" /> requests Open-Meteo’s FAO reference evapotranspiration (ET₀). The two functions below are from <WebSource file="src/model.ts" />. One millimeter of water over one m² is one liter. The model adjusts for crop, cover and irrigation efficiency; outdoor rain is not deducted.</p>
       <Code language="TypeScript · src/model.ts" code={[sourceLine('export const demand'), sourceLine('export const pumpMinutes')].join('\n')} />
       <p>Worked example: ET₀ of 4 mm/day gives about 2.83 L/m²/day. Across 100 m² with a 12 L/min pump, that’s about 24 minutes total. It’s a planning example, not an instruction sent to the ESP32.</p>
     </section>
     <section className="card detail-card tutorial-chapter" id="learn-scenarios">
       <h2>7. Model wider coverage</h2>
-      <p>The coverage function multiplies per-unit impacts by greenhouse count. Forecast error is an illustrative curve, not a prediction model calibrated to farms; it ignores spatial correlation. See <a href="#impact">Impact</a> for the assumptions, including growing days, farmgate price and excluded losses.</p>
+      <p>The coverage function in <WebSource file="src/model.ts" /> multiplies per-unit impacts by greenhouse count. Forecast error is an illustrative curve, not a prediction model calibrated to farms; it ignores spatial correlation. See <a href="#impact">Impact</a> for the assumptions, including growing days, farmgate price and excluded losses.</p>
       <Code language="TypeScript · src/model.ts" code={'export function coverage' + modelSource.split('export function coverage')[1].split('\ntype DHTEntry')[0].trimEnd()} />
       <p>Exercise: increase 500 units to 5,000. Why does water saved multiply by ten while forecast error does not fall by the same factor?</p>
     </section>
     <section className="card detail-card tutorial-chapter" id="learn-run">
       <h2>8. Run it yourself</h2>
-      <p>From a checkout or source copy of the web demo, install Node.js 22 or newer, then run the following and open the local address printed by Vite.</p>
-      <Code language="Shell · web demo" code={'npm ci\nnpm run dev\n\n# Verify the model\nnpm test'} />
+      <p>Install Node.js 22 or newer, clone the <a href={webRepo} target="_blank" rel="noopener noreferrer">web demo</a>, then open the local address printed by Vite.</p>
+      <Code language="Shell · web demo" code={`git clone ${webRepo}.git\ncd agis-intelligence\nnpm ci\nnpm run dev\n\n# Verify the model\nnpm test`} />
       <p>To build the ESP32 revision used in this tutorial, install <a href="https://docs.platformio.org/en/latest/core/installation/index.html" target="_blank" rel="noopener noreferrer">PlatformIO Core</a> and check out PR #2 before building. Review the commissioning instructions before uploading to hardware.</p>
       <Code language="Shell · firmware" code={`git clone https://github.com/Tnzr/AGIS.git
 cd AGIS
