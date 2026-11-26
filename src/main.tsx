@@ -4,7 +4,7 @@ import { Activity, ArrowDown, ArrowUpRight, BookOpen, CircleHelp, Globe2, Layout
 import { CoverageStats, number } from './CoverageStats.tsx'
 import { Pilot, contact } from './Pilot.tsx'
 import { WeatherPanel } from './WeatherPanel.tsx'
-import { nearestSite, readLocations, saveLocations } from './locations.ts'
+import { addLocation, isLocationListChange, readLocations, saveSelection } from './locations.ts'
 import { sites, type Site } from './model.ts'
 import { searchSites } from './weather.ts'
 import './styles.css'
@@ -100,6 +100,7 @@ function LocationPicker({ active, listedSites, select, add, selectionVersion }: 
 }
 
 function App() {
+  const main = useRef<HTMLElement>(null)
   const [tab, setTab] = useState(tabFromUrl)
   const [scenario, setScenario] = useState(scenarios[1])
   const [locations, setLocations] = useState(readLocations)
@@ -107,7 +108,15 @@ function App() {
   const listedSites = [...sites, ...locations.custom]
   const active = listedSites.find(site => site.id === locations.selectedId) ?? sites[0]
   const units = scenario.units
-  useEffect(() => saveLocations(locations), [locations])
+  useEffect(() => {
+    function syncLocations(event: StorageEvent) {
+      if (event.storageArea !== localStorage || !isLocationListChange(event.key)) return
+      const { custom } = readLocations()
+      setLocations(previous => ({ ...previous, custom }))
+    }
+    window.addEventListener('storage', syncLocations)
+    return () => window.removeEventListener('storage', syncLocations)
+  }, [])
   useEffect(() => {
     const sync = () => setTab(tabFromUrl())
     window.addEventListener('hashchange', sync)
@@ -119,14 +128,12 @@ function App() {
     if (anchor === '#coverage' || anchor === '#pilot') document.getElementById(anchor.slice(1))?.scrollIntoView()
   }, [tab])
   function selectSite(site: Site) {
+    saveSelection(site.id)
     setLocations(previous => ({ ...previous, selectedId: site.id }))
     setSelectionVersion(version => version + 1)
   }
   function addSite(site: Site) {
-    setLocations(previous => {
-      const existing = nearestSite(site, [...sites, ...previous.custom])
-      return { custom: existing ? previous.custom : [...previous.custom, site], selectedId: (existing ?? site).id }
-    })
+    setLocations(addLocation(site, locations.custom))
     setSelectionVersion(version => version + 1)
   }
   function addPin(latitude: number, longitude: number) {
@@ -141,13 +148,17 @@ function App() {
     window.scrollTo(0, 0)
   }
   return <>
-    <a className="skip" href="#main">Skip to content</a>
+    <a className="skip" href="#main" onClick={event => {
+      event.preventDefault()
+      main.current?.focus({ preventScroll: true })
+      main.current?.scrollIntoView()
+    }}>Skip to content</a>
     <header className="header"><div className="shell nav-shell">
       <button className="brand" onClick={() => showTab('overview')} aria-label="AGIS overview"><img src="/agis.svg" alt="" width="36" height="36" /><span><strong>AGIS</strong><small>Agricultural intelligence</small></span></button>
       <nav aria-label="Dashboard views">{tabs.map(({ id, text, icon: Icon }) => <button key={id} aria-current={tab === id ? 'page' : undefined} onClick={() => showTab(id)}><Icon size={16} /><span>{text}</span></button>)}</nav>
       <a className="source-link" href={firmware} target="_blank" rel="noopener noreferrer">Firmware <ArrowUpRight size={15} /></a>
     </div></header>
-    <main className="shell main" id="main">
+    <main className="shell main" id="main" tabIndex={-1} ref={main}>
       {tab === 'overview' ? <>
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-content"><div className="eyebrow"><span className="eyebrow-dot" /> Open-source concept demo</div><h1 id="hero-title">From greenhouse data<br className="desktop-break" /> to better forecasts</h1><p>The <a href={firmware} target="_blank" rel="noopener noreferrer">open-source ESP32 controller</a> reads DHT11 temperature and humidity and water flow, runs the pump and fan with local PID control, and streams readings over WebSocket.</p><div className="hero-actions"><a href="#coverage" className="primary-button">Explore the scenarios <ArrowDown size={16} /></a><a href="#pilot" className="quiet-button">Plan a pilot <ArrowDown size={16} /></a></div></div>

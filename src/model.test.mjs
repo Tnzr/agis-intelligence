@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { onLand } from './land.ts'
-import { nearestSite, readLocations, saveLocations } from './locations.ts'
+import { addLocation, nearestSite, readLocations } from './locations.ts'
 import { coverage, demand, parseFrame, pumpMinutes, sampleWeather, simulateFrame, sites } from './model.ts'
 
 test('fallback provides thirty historical days and seven forecast days', () => {
@@ -53,18 +53,52 @@ test('location lookup reuses nearby built-in sites, not distant points', () => {
   assert.equal(nearestSite({ ...nairobi, lat: -1.4 }, sites), undefined)
 })
 
-test('saved locations restore both the custom site and the current selection', () => {
+function withLocationStorage(run) {
   const storage = new Map()
   Object.defineProperty(globalThis, 'localStorage', {
-    configurable: true, value: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) },
+    configurable: true,
+    value: {
+      get length() { return storage.size },
+      key: index => [...storage.keys()][index] ?? null,
+      getItem: key => storage.get(key) ?? null,
+      setItem: (key, value) => storage.set(key, value),
+    },
   })
   try {
-    const custom = [{ id: 'oslo', name: 'Oslo', region: 'Norway', lat: 59.91, lon: 10.75 }]
-    saveLocations({ custom, selectedId: 'oslo' })
-    assert.deepEqual(readLocations(), { custom, selectedId: 'oslo' })
+    run()
   } finally {
     delete globalThis.localStorage
   }
+}
+
+const oslo = { id: 'oslo', name: 'Oslo', region: 'Norway', lat: 59.91, lon: 10.75 }
+const tokyo = { id: 'tokyo', name: 'Tokyo', region: 'Japan', lat: 35.68, lon: 139.69 }
+
+test('saved locations restore both the custom site and the current selection', () => {
+  withLocationStorage(() => {
+    const custom = [oslo]
+    addLocation(oslo, [])
+    assert.deepEqual(readLocations(), { custom, selectedId: 'oslo' })
+  })
+})
+
+test('additions from two views initialized before either saves both survive a reload', () => {
+  withLocationStorage(() => {
+    const first = readLocations()
+    const second = readLocations()
+    addLocation(oslo, first.custom)
+    addLocation(tokyo, second.custom)
+    assert.deepEqual(readLocations(), { custom: [oslo, tokyo], selectedId: 'tokyo' })
+  })
+})
+
+test('existing saved locations and selection remain available after the storage change', () => {
+  withLocationStorage(() => {
+    localStorage.setItem('agis-locations-v1', JSON.stringify({ custom: [oslo], selectedId: 'oslo' }))
+    assert.deepEqual(readLocations(), { custom: [oslo], selectedId: 'oslo' })
+    addLocation(tokyo, readLocations().custom)
+    assert.deepEqual(readLocations(), { custom: [oslo, tokyo], selectedId: 'tokyo' })
+  })
 })
 
 test('bundled land polygons distinguish a city from an open-ocean pin', () => {

@@ -13,26 +13,42 @@ const types = {
 }
 const port = Number(process.env.PORT ?? 4173)
 
-createServer(async (request, response) => {
+async function serve(request, response) {
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     response.writeHead(405, { Allow: 'GET, HEAD' }).end()
     return
   }
-  const { pathname } = new URL(request.url, 'http://localhost')
+  let pathname
+  try {
+    pathname = new URL(request.url, 'http://localhost').pathname
+  } catch {
+    response.writeHead(400).end()
+    return
+  }
   const isPage = !pathname.startsWith('/assets/') && !extname(pathname)
   const path = isPage ? 'index.html' : pathname.slice(1)
   if (!/^(?:assets\/)?[\w.-]+$/.test(path) || !Object.hasOwn(types, extname(path))) {
     response.writeHead(404).end()
     return
   }
-  try {
-    const data = await readFile(new URL(path, root))
-    response.writeHead(200, {
-      'Content-Type': types[extname(path)],
-      'Content-Length': data.length,
-      'X-Content-Type-Options': 'nosniff',
-    }).end(request.method === 'HEAD' ? undefined : data)
-  } catch {
-    response.writeHead(404).end()
-  }
+  const data = await readFile(new URL(path, root)).catch(error => {
+    if (error.code === 'ENOENT' || error.code === 'EISDIR') return null
+    throw error
+  })
+  if (!data) return response.writeHead(404).end()
+  response.writeHead(200, {
+    'Content-Type': types[extname(path)],
+    'Content-Length': data.length,
+    'X-Content-Type-Options': 'nosniff',
+  }).end(request.method === 'HEAD' ? undefined : data)
+}
+
+createServer((request, response) => {
+  void serve(request, response).catch(() => {
+    if (response.headersSent || response.destroyed) {
+      response.destroy()
+    } else {
+      response.writeHead(500).end()
+    }
+  })
 }).listen(port, '0.0.0.0', () => console.log('AGIS listening on http://0.0.0.0:' + port))
