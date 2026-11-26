@@ -1,0 +1,23 @@
+.tutorial{max-width:960px;margin:auto}
+.tutorial-intro h1{font-size:clamp(32px,5vw,50px);line-height:1.05;letter-spacing:-.05em;margin:7px 0 12px}
+.tutorial-intro p+p,.tutorial-chapter p,.tutorial-chapter table{margin-top:10px}
+.tutorial-toc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:17px}
+.tutorial-toc a{display:flex;align-items:center;min-height:44px;padding:8px 10px;border-radius:7px;background:var(--wash);font-size:13px;font-weight:700;text-decoration:none}
+.tutorial-toc a:hover{text-decoration:underline}
+.tutorial-chapter{margin-top:13px;scroll-margin-top:8px}
+.tutorial-chapter h2{font-size:clamp(24px,4vw,31px)}
+.tutorial-chapter th,.tutorial-chapter td{text-align:left}
+.tutorial-chapter p{overflow-wrap:anywhere}
+.tutorial-diagram{padding:0 12px 10px;margin-top:12px;border:1px solid var(--line);border-radius:8px;background:var(--wash)}
+.tutorial-sources{font-size:13px}
+.tutorial-sources a{display:inline-flex;gap:3px;align-items:center}
+.tutorial-code{margin-top:12px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.code-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-inline:10px;background:var(--wash);font-size:12px}
+.code-bar button{display:inline-flex;align-items:center;gap:5px;min-height:44px;margin-left:auto;font-weight:700}
+.code-bar span:last-child:empty{display:none}
+.tutorial-code pre{margin:0;background:#f5f7f2;color:#21372a;padding:12px;overflow-x:auto;font-size:13px;line-height:1.5}
+.tutorial-code .comment{color:#546b5a}
+.tutorial-code .string{color:#874723}
+.tutorial-code .numeric{color:#174f6a}
+.tutorial-code .keyword{color:#275e42;font-weight:750}
+@media(max-width:480px){.tutorial-toc a{font-size:12px;padding-inline:7px}}
