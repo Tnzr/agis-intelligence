@@ -25,7 +25,7 @@ results AGIS does not have.
 
 | Document | Where |
 |---|---|
-| Pitch deck | Produced by Pioneer Innovations' Pitch Desk bot; the refreshed AGIS deck is pending and is required for the WFP application (10 slides max). Not committed here yet. |
+| Pitch deck | [AGIS_Investor_Deck.pdf](https://app.devin.ai/attachments/a3ffcc0f-4902-4103-9140-2a079f11fbcf/AGIS_Investor_Deck.pdf) · [AGIS_Investor_Deck.pptx](https://app.devin.ai/attachments/f9f73e51-8e8b-47f8-9e0f-fc913c1ace12/AGIS_Investor_Deck.pptx) — 15 slides in DVP order, produced by the Pitch Desk bot ([generator source PR](https://github.com/Tnzr/pioneer-innovations-collective_landingpage/pull/32), not merged). Raise, terms, financials, kit price, and QR still TBD. WFP requires a version trimmed to 10 slides max. |
 | WFP Innovation Accelerator application draft | Field-by-field draft with remaining gaps; held until a WFP-country pilot and real-world use exist. |
 | DIV Fund Stage 1 application draft | Draft answers to the live form; held for the same reason. |
 | Live demo | [agis.pioneerinnovations.org](https://agis.pioneerinnovations.org) / [agis-intelligence.fly.dev](https://agis-intelligence.fly.dev): browser demo of controller telemetry and scenario modeling. All outputs are modeled, not field-measured. |
